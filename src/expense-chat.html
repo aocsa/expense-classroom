@@ -1,0 +1,432 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/vaadin-date-picker/vaadin-date-picker.html">
+<link rel="import" href="../bower_components/vaadin-combo-box/vaadin-combo-box.html">
+<link rel="import" href="../bower_components/vaadin-upload/vaadin-upload.html">
+<link rel="import" href="../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+
+<dom-module id="expense-chat">
+  <template>
+    <style>
+      #dialog {
+        display: block;
+        padding: 0 8px;
+        border-top: 3px solid var(--accent-color);
+        margin: 0;
+        width: 60vw;
+        background: var(--primary-background-color);
+        max-height: 100vh;
+        /* Keep overflow visible so vaadin-date-picker dropdown won't clip */
+        overflow: visible;
+      }
+      body {
+          padding: 0;
+          margin: 0;
+          font-family: Roboto, Noto, "Helvetica Neue", "Segoe UI Web Regular", "Segoe UI", Helvetica, Arial, sans-serif;
+          color: #333;
+          font-weight: 300;
+      }
+      :host {
+          width: 100%;
+          height: 100%;
+          -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box;
+      }
+      iron-icon[icon=account-circle] {
+          margin-right: 3px;
+      }
+      paper-fab[icon=send] {
+          background: #F44336;
+          bottom: 9px;
+      }
+      #chat {
+          height: 100%;
+          background-color: #eee; /*TODO: This is needed because this isn't a core-scaffold any more which had default color of #eee*/
+      }
+      .chat-list {
+          overflow-y: scroll;
+          padding-bottom: 16px;
+      }
+      .send-message {
+          padding: 0 16px 6px 16px;
+      }
+      .shim{
+          position: fixed;
+          bottom: 54px;
+          left: 0;
+          right: 0;
+          height: 36px;
+          background: linear-gradient(rgba(255,255,255,0), #eee 80%) top center no-repeat;
+      }
+      .occupancy {
+          padding: 16px;
+      }
+      .subdue, .subdue /deep/ div {
+          color: #999;
+      }
+
+      /* Drawer */
+
+      #onlineList {
+          margin: 16px;
+          text-transform: capitalize;
+      }
+      ::content > .avatar {
+          margin: 0; /* override */
+      }
+      #navheader {
+          background: url(../images/abstract-21664.jpg) top left no-repeat;
+      }
+      #navheader .avatar {
+          border-radius: 50%;
+          width: 80px;
+          height: 80px;
+          background: #9e9e9e url() center center no-repeat;
+          background-size: contain;
+      }
+      #navheader .uuid {
+          color: #fff;
+          font-weight: 500;
+          text-shadow: 1px 1px 2px #000;
+      }
+
+      /* Avatar */
+      .avatar {
+          border: solid 3px silver;
+      }
+      .avatar.navy {
+          border-color: #393b79;
+      }
+      .avatar.slate {
+          border-color: #6b6ecf;
+      }
+      .avatar.olive {
+          border-color: #637939;
+      }
+      .avatar.moss {
+          border-color: #b5cf6b;
+      }
+      .avatar.chocolate {
+          border-color: #8c6d31;
+      }
+      .avatar.buttercup {
+          border-color: #e7ba52;
+      }
+      .avatar.maroon {
+          border-color: #843c39;
+      }
+      .avatar.cerise {
+          border-color: #d6616b;
+      }
+      .avatar.plum {
+          border-color: #7b4173;
+      }
+      .avatar.orchid {
+          border-color: #ce6dbd;
+      }
+
+      .main-layout {
+        display: flex;
+        flex-direction: row;
+      }
+
+      .flex {
+        flex: 1;
+      }
+
+      .form {
+        flex: 2;
+      }
+
+      #form> * {
+        margin-bottom: 8px;
+      }
+
+      .buttons-layout {
+        display: flex;
+        flex-direction: row;
+        margin-top: 16px;
+      }
+
+      .buttons-layout paper-button {
+        width: 150px;
+      }
+
+      .save-button {
+        background: var(--primary-color);
+        color: var(--text-primary-color);
+      }
+
+      .cancel-button {
+        color: var(--primary-color);
+      }
+
+      .main-layout h2 {
+        font-size: 24px !important;
+        font-weight: 300 !important;
+      }
+
+      .receipt {
+        flex: 3;
+        margin-left: 24px;
+        min-height: 64px;
+        max-width: 400px;
+      }
+
+      .receipt .receipt-wrapper {
+        max-width: 100%;
+        display: block;
+        margin: 20px auto;
+        max-height: 50vh;
+        overflow-y: scroll;
+      }
+
+      .receipt-wrapper img {
+        width: 100%;
+      }
+
+      .receipt img[hidden] {
+        display: none;
+      }
+
+      paper-button[hidden] {
+        display: none;
+      }
+
+      div[prefix] {
+        margin-right: 6px;
+      }
+
+      #error {
+        color: red;
+      }
+
+      :host> .wrapper {
+        height: 100%;
+        width: 100%;
+        padding: 0;
+      }
+
+      .close-button {
+        color: var(--dark-primary-color);
+      }
+
+      .delete-button {
+        margin-left: auto;
+        color: var(--text-primary-color);
+        background: var(--accent-color);
+      }
+
+      form::content label {
+        font-weight: bold !important;
+        color: #999 !important;
+      }
+
+      .wrapper {
+        display: flex;
+      }
+
+      @media (min-width: 900px) {
+        #dialog {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .wrapper {
+          flex-direction: row;
+          overflow: auto;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .receipt {
+          margin: 24px 0 0 0;
+        }
+        .wrapper {
+          flex-direction: column;
+        }
+        .receipt {
+          width: 100%;
+          margin: 40px auto;
+        }
+        .receipt .receipt-wrapper {
+          max-height: inherit;
+        }
+        #dialog {
+          width: 100vw;
+          min-height: 100vh;
+          padding: 0 0 60px 0;
+          overflow-y: scroll;
+        }
+      }
+    </style>
+
+    <app-route route="{{route}}" pattern="/:action" data="{{routeData}}"></app-route>
+
+    <iron-media-query query="(min-height: 900px)" query-matches="{{tallWindow}}"></iron-media-query>
+    <paper-dialog id="dialog" modal no-cancel-on-esc-key="false" opened="{{_showDialog(route.path)}}">
+      <div class="main-layout">
+        <h2>{{caption}}</h2>
+        <span class="flex"></span>
+        <paper-icon-button icon="close" on-tap="close" class="close-button self-start"></paper-icon-button>
+      </div>
+
+      <div class="layout vertical fit" id="chat">
+        <div class="chat-list flex">
+          <template is="dom-repeat" items="{{messageList}}" as="message">
+            <x-chat-list color="{{message.color}}" avatar="{{message.avatar}}" username="{{message.uuid_real}}" text="{{message.text}}" status="{{message.status}}" timestamp="{{message.timestamp}}"></x-chat-list>
+          </template>
+        </div>
+        <div class="shim"></div>
+
+        <div class="send-message layout horizontal">
+          <paper-input class="flex" label="Type message..." id="input" value="{{input}}" on-keyup="checkKey"></paper-input>
+          <paper-fab icon="send" id="sendButton" on-tap="sendMyMessage"></paper-fab>
+        </div>
+    
+      <span id="error" hidden$="[[!errorMessage]]">{{errorText}}</span>
+    </paper-dialog>
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+
+      Polymer({
+        is: 'expense-chat',
+
+        properties: {
+          service: Object,
+          merchants: Array,
+          expense: {
+            type: Object,
+            notify: true,
+            value: function() {
+              return {};
+            }
+          },
+          caption: {
+            type: String,
+            computed: '_getCaption(expense)'
+          },
+          errorText: String,
+          db: Object,
+          _receiptURL: {
+            type: String,
+            notify: true,
+            value: 'images/default-receipt.png'
+          },
+          route: Object,
+          routeData: Object
+        },
+
+        observers: ['_updateReceiptURL(expense._attachments.*)'],
+
+        ready: function() {
+          
+          
+        },
+
+        attached: function() {
+          this._boundOnResize = this._onResize.bind(this);
+          window.addEventListener('resize', this._boundOnResize);
+        },
+
+        detached: function() {
+          window.removeEventListener('resize', this._boundOnResize);
+        },
+
+        _onResize: function() {
+          this.$.dialog.notifyResize();
+        },
+
+        _showDialog: function() {
+          return this.expense && this.route.path && this.route.path === '/chat';
+        },
+
+        _getCaption: function(expense) {
+          if (expense._id) {
+            return 'Chat Expense';
+          } else {
+            return 'New Chat';
+          }
+        },
+
+        _showReceipt: function() {
+          return this.expense._id && this.expense.status !== 'new' ||
+            this.expense._attachments && this.expense._attachments.receipt;
+        },
+
+        _updateReceiptURL: function() {
+          if (this.expense._attachments && this.expense._attachments.receipt) {
+            if (this.expense._attachments.receipt.data instanceof File ||  
+              this.expense._attachments.receipt.data instanceof Blob) {
+              this._receiptURL = URL.createObjectURL(this.expense._attachments.receipt.data);
+            } else {
+              this.db.getAttachment(this.expense._id, 'receipt')
+                .then(function(blob) {
+                  this._receiptURL = URL.createObjectURL(blob);
+                }.bind(this))
+                .catch(function(err) {
+                  console.log(err);
+                });
+            }
+          } else {
+            this._receiptURL = 'images/default-receipt.png';
+          }
+          this.$.dialog.notifyResize();
+        },
+
+        listeners: {
+          'iron-form-invalid': '_formInvalid'
+        },
+
+        // Read canvas content and returns a Blob.
+        // For browsers not supporting canvas.toBlob
+        _canvasToBlob: function(canvas) {
+         
+        },
+
+        // Read a file and return a Blob. If it's an image it converts and
+        // resizes using a canvas.
+        // TODO: move this to vaadin-upload as a utility method
+        _resizeImage: function(file, callback, mimeType, maxWidth, maxHeight) {
+           
+        },
+
+        _handleUpload: function(e) {
+          
+        },
+
+        _save: function() {
+          
+        },
+
+        open: function(expense) {
+ 
+          this.set('route.path', '/chat');
+        },
+
+        close: function() {
+          var _this = this;
+          this.async(function() {
+            // Prevent tap from leaking through to underlying page
+            _this.set('route.path', '');
+            _this.expense = {};
+          }, 100);
+        },
+
+        _delete: function() {
+          this.fire('delete-expense', this.expense);
+        }
+      });
+    })();
+  </script>
+</dom-module>
