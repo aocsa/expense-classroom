@@ -1,6 +1,9 @@
 <link rel="import" href="../bower_components/polymer/polymer.html">
 <link rel="import" href="../bower_components/iron-pages/iron-pages.html">
 <link rel="import" href="login-page.html">
+
+<link rel="import" href="expense-chat.html">
+
 <dom-module id="expense-app">
   <template>
     <style>
@@ -65,8 +68,10 @@
       }
     </style>
 
+  
     <iron-pages id="pages" selected="[[selected]]">
       <login-page id="login" logged-in="{{loggedIn}}"></login-page>
+ 
       <overview-page id="overview" logged-in="{{loggedIn}}"></overview-page>
     </iron-pages>
 

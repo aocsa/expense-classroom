@@ -13,10 +13,16 @@
 <link rel="import" href="../bower_components/iron-media-query/iron-media-query.html">
 <link rel="import" href="../bower_components/app-route/app-route.html">
 
+
+<link rel="import" href="../bower_components/pubnub-element/pubnub-element.html">
+
+<link rel="import" href="x-chat-list.html">
+
+
 <dom-module id="expense-chat">
   <template>
     <style>
-      #dialog {
+ #dialog {
         display: block;
         padding: 0 8px;
         border-top: 3px solid var(--accent-color);
@@ -26,110 +32,6 @@
         max-height: 100vh;
         /* Keep overflow visible so vaadin-date-picker dropdown won't clip */
         overflow: visible;
-      }
-      body {
-          padding: 0;
-          margin: 0;
-          font-family: Roboto, Noto, "Helvetica Neue", "Segoe UI Web Regular", "Segoe UI", Helvetica, Arial, sans-serif;
-          color: #333;
-          font-weight: 300;
-      }
-      :host {
-          width: 100%;
-          height: 100%;
-          -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box;
-      }
-      iron-icon[icon=account-circle] {
-          margin-right: 3px;
-      }
-      paper-fab[icon=send] {
-          background: #F44336;
-          bottom: 9px;
-      }
-      #chat {
-          height: 100%;
-          background-color: #eee; /*TODO: This is needed because this isn't a core-scaffold any more which had default color of #eee*/
-      }
-      .chat-list {
-          overflow-y: scroll;
-          padding-bottom: 16px;
-      }
-      .send-message {
-          padding: 0 16px 6px 16px;
-      }
-      .shim{
-          position: fixed;
-          bottom: 54px;
-          left: 0;
-          right: 0;
-          height: 36px;
-          background: linear-gradient(rgba(255,255,255,0), #eee 80%) top center no-repeat;
-      }
-      .occupancy {
-          padding: 16px;
-      }
-      .subdue, .subdue /deep/ div {
-          color: #999;
-      }
-
-      /* Drawer */
-
-      #onlineList {
-          margin: 16px;
-          text-transform: capitalize;
-      }
-      ::content > .avatar {
-          margin: 0; /* override */
-      }
-      #navheader {
-          background: url(../images/abstract-21664.jpg) top left no-repeat;
-      }
-      #navheader .avatar {
-          border-radius: 50%;
-          width: 80px;
-          height: 80px;
-          background: #9e9e9e url() center center no-repeat;
-          background-size: contain;
-      }
-      #navheader .uuid {
-          color: #fff;
-          font-weight: 500;
-          text-shadow: 1px 1px 2px #000;
-      }
-
-      /* Avatar */
-      .avatar {
-          border: solid 3px silver;
-      }
-      .avatar.navy {
-          border-color: #393b79;
-      }
-      .avatar.slate {
-          border-color: #6b6ecf;
-      }
-      .avatar.olive {
-          border-color: #637939;
-      }
-      .avatar.moss {
-          border-color: #b5cf6b;
-      }
-      .avatar.chocolate {
-          border-color: #8c6d31;
-      }
-      .avatar.buttercup {
-          border-color: #e7ba52;
-      }
-      .avatar.maroon {
-          border-color: #843c39;
-      }
-      .avatar.cerise {
-          border-color: #d6616b;
-      }
-      .avatar.plum {
-          border-color: #7b4173;
-      }
-      .avatar.orchid {
-          border-color: #ce6dbd;
       }
 
       .main-layout {
@@ -265,7 +167,7 @@
           padding: 0 0 60px 0;
           overflow-y: scroll;
         }
-      }
+      }      
     </style>
 
     <app-route route="{{route}}" pattern="/:action" data="{{routeData}}"></app-route>
@@ -278,19 +180,33 @@
         <paper-icon-button icon="close" on-tap="close" class="close-button self-start"></paper-icon-button>
       </div>
 
-      <div class="layout vertical fit" id="chat">
-        <div class="chat-list flex">
-          <template is="dom-repeat" items="{{messageList}}" as="message">
-            <x-chat-list color="{{message.color}}" avatar="{{message.avatar}}" username="{{message.uuid_real}}" text="{{message.text}}" status="{{message.status}}" timestamp="{{message.timestamp}}"></x-chat-list>
-          </template>
-        </div>
-        <div class="shim"></div>
 
-        <div class="send-message layout horizontal">
-          <paper-input class="flex" label="Type message..." id="input" value="{{input}}" on-keyup="checkKey"></paper-input>
-          <paper-fab icon="send" id="sendButton" on-tap="sendMyMessage"></paper-fab>
-        </div>
-    
+
+	    <!-- Use your own publish_key and subscribe_key please!  --> 
+	    <core-pubnub publish_key="pub-c-156a6d5f-22bd-4a13-848d-b5b4d4b36695" subscribe_key="sub-c-f762fb78-2724-11e4-a4df-02ee2ddab7fe" uuid="{{uuid}}">
+	      <core-pubnub-subscribe channel="polymer-chat" id="sub" on-callback="subscribeCallback" on-presence="presenceChanged" on-error="{{error}}">
+	        <core-pubnub-publish channel="polymer-chat" message="" id="pub" on-error="{{error}}"></core-pubnub-publish>
+	        <core-pubnub-history channel="polymer-chat" count="30" on-success="historyRetrieved" on-error="{{error}}"></core-pubnub-history>
+	      </core-pubnub-subscribe>
+	    </core-pubnub>
+ 
+ 
+
+	      <!-- Main Content -->
+	      <div class="layout vertical fit" id="chat">
+	        <div class="chat-list flex" id = "chatlayout">
+	          <template is="dom-repeat" items="{{messageList}}" as="message">
+	            <x-chat-list color="{{message.color}}" avatar="{{message.avatar}}" username="{{message.uuid}}" text="{{message.text}}" status="{{message.status}}" timestamp="{{message.timestamp}}"></x-chat-list>
+	          </template>
+	        </div>
+	        <div class="shim"></div>
+
+	        <div class="send-message layout horizontal">
+	          <paper-input class="flex" label="Type message..." id="input" value="{{input}}" on-keyup="checkKey"></paper-input>
+	          <paper-fab icon="send" id="sendButton" on-tap="sendMyMessage"></paper-fab>
+	        </div>
+	      </div> 
+     
       <span id="error" hidden$="[[!errorMessage]]">{{errorText}}</span>
     </paper-dialog>
   </template>
@@ -305,6 +221,7 @@
         properties: {
           service: Object,
           merchants: Array,
+          
           expense: {
             type: Object,
             notify: true,
@@ -324,15 +241,164 @@
             value: 'images/default-receipt.png'
           },
           route: Object,
-          routeData: Object
+          routeData: Object,
+          	messageList : [],
+				    uuid : Object,
+				    avatar: Object,
+				    color: Object, 
+				    cat: Object,
+				    template: Object,
+				    pastMsgs: [],
+				    cats : [],
         },
 
         observers: ['_updateReceiptURL(expense._attachments.*)'],
 
         ready: function() {
           
+				  this.color = this.randomColor();
+				  this.cat = this.randomCat();
+				  this.uuid = this.color + '-' + this.cat;
+				  this.avatar = '../images/' + this.cat + '.jpg';
+				  this.template = this;
+				  this.pastMsgs = [];
+				  this.cats = [];
+
+				 	  this.template.channel = 'polymer-chat';
+					  this.template.uuid = this.uuid;
+					  this.template.avatar = this.avatar;
+					  this.template.color = this.color;
+					  this.template.cats = [];
+					   this.template.messageList = [];
           
         },
+      randomColor : function() {
+			    	var colors = ['navy', 'slate', 'olive', 'moss', 'chocolate', 'buttercup', 'maroon', 'cerise', 'plum', 'orchid'];
+				    return colors[(Math.random() * colors.length) >>> 0];
+				  },
+
+			    randomCat : function() {
+				    var cats = ['tabby', 'bengal', 'persian', 'mainecoon', 'ragdoll', 'sphynx', 'siamese', 'korat', 'japanesebobtail', 'abyssinian', 'scottishfold'];
+				    return cats[(Math.random() * cats.length) >>> 0];
+				  },
+		        checkKey : function(e) {
+		          if(e.keyCode === 13 || e.charCode === 13) {
+		            this.publish();
+		          }
+		        },
+		        // Sending a chat message by clicking a "Send" button
+		        sendMyMessage : function(e) {
+		          this.publish();
+		        }, 
+
+			  getListWithOnlineStatus : function(list) {
+			    for (var i = 0; i < list.length; i++) {
+			      var l = list[i];
+			      // sanitize avatars
+			      var catName = (l.uuid + '').split('-')[1];
+			      l.avatar = 'images/' + catName + '.jpg';
+
+			      if (catName === undefined || /\s/.test(l.uuid)) {
+			        l.uuid = 'fail-cat';
+			        console.log('Oh you, I made this demo open so nice devs can play with, but you are not nice. Please use your keys, and do not mess with this chat room.');
+			      }
+
+			      // Check status
+			      if(this.template.cats.indexOf(l.uuid) > -1) {
+			        l.status = 'online';
+			      } else {
+			        l.status = 'offline';
+			      }
+			    }
+
+
+			    return list;
+			  },
+
+			  showNewest : function () {
+			    //document.querySelector('core-scaffold').$.headerPanel.scroller.scrollTop = document.querySelector('.chat-list').scrollHeight;
+
+			    var chatDiv = document.querySelector('.chat-list');
+			    if(chatDiv) {
+			      chatDiv.scrollTop = chatDiv.scrollHeight + 100; //TODO: Need to fix so that we can find the .chat-list class object
+			    }
+			  },
+
+			   displayChatList : function(list) {
+			    this.template.messageList = list;
+			    // scroll to bottom when all list items are displayed
+			      this.showNewest() ;
+			  },
+
+			  subscribeCallback : function(e) {
+			    if(this.template.$.sub.messages.length > 0) { console.log(this.template.$.sub.messages);
+			        this.displayChatList(this.pastMsgs.concat(this.getListWithOnlineStatus(this.template.$.sub.messages)));
+			    }
+			  },
+
+			  presenceChanged : function(e) {
+			    var i = 0;
+			    var l = this.template.$.sub.presence.length;
+			    var d = this.template.$.sub.presence[l - 1];
+
+			    // how many users
+			    this.template.occupancy = d.occupancy;
+
+			    // who are online
+			    if(d.action === 'join') {
+			      if(d.uuid.length > 35) { // pubnub admin console
+			        d.uuid = 'the-mighty-big-cat';
+			      }
+			      this.push('cats', d.uuid);
+			        
+			    } else {
+			      var idx = this.template.cats.indexOf(d.uuid);
+			      if(idx > -1) {
+			        this.splice('cats', idx, 1);
+			      }
+			    }
+
+			    i++;
+
+			    // update the status at the main column
+			    if(this.template.messageList.length > 0) {
+			      this.template.messageList = this.getListWithOnlineStatus(this.template.messageList);
+			    }
+			    this.showNewest() ;
+			  },
+
+			  historyRetrieved : function(e) {
+			  if(e.detail[0].length > 0) {
+			      this.pastMsgs = this.getListWithOnlineStatus(e.detail[0]);
+			      this.displayChatList(this.pastMsgs);
+			    }
+			  },
+
+			  publish : function() {
+			    if(!this.template.input) return;
+
+			    this.template.$.pub.message = {
+			      uuid: this.uuid,
+			      avatar: this.avatar,
+			      color: this.color,
+			      text: this.template.input,
+			      timestamp: new Date().toISOString()
+			    };
+			    this.template.$.pub.publish();
+			    this.template.input = '';
+			  },
+
+			  error : function(e) {
+			      console.log(e);
+			  },
+
+			  _colorClass : function(color) {
+			      return 'middle avatar '+color;
+			  },
+
+			  _backgroundImage : function(avatar) {
+			      return 'background-image: url('+avatar+');';
+			  },
 
         attached: function() {
           this._boundOnResize = this._onResize.bind(this);
